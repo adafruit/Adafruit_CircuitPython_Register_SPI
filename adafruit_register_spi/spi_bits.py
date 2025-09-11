@@ -38,14 +38,13 @@ class RWBits:
         lsb_first=True,
     ):
         self.bit_mask = ((1 << num_bits) - 1) << lowest_bit
-        # print("bitmask: ",hex(self.bit_mask))
+
         if self.bit_mask >= 1 << (register_width * 8):
             raise ValueError("Cannot have more bits than register size")
         self.lowest_bit = lowest_bit
         self.buffer = bytearray(1 + register_width)
         self.buffer[0] = register_address
         self.buffer[1] = register_width - 1
-        print(f"__init__ buffer: {', '.join(bin(b) for b in self.buffer)}")
         self.lsb_first = lsb_first
 
     def _shift_rw_cmd_bit_into_address_byte(self, bit_value):
@@ -60,27 +59,22 @@ class RWBits:
     def __get__(self, obj, objtype=None):
         with obj.spi_device as spi:
             self._shift_rw_cmd_bit_into_address_byte(1)
-            print(f"__get__ buffer b4: {', '.join(bin(b) for b in self.buffer)}")
             spi.write(self.buffer, end=1)
             time.sleep(0.01)
             spi.readinto(self.buffer, start=1)
-            print(f"__get__ buffer after: {', '.join(bin(b) for b in self.buffer)}")
         # read the number of bytes into a single variable
         reg = 0
         order = range(len(self.buffer) - 1, 0, -1)
         if not self.lsb_first:
             order = reversed(order)
         for i in order:
-            print(f"i = {i}")
             reg = (reg << 8) | self.buffer[i]
         return (reg & self.bit_mask) >> self.lowest_bit
 
     def __set__(self, obj, value):
         value <<= self.lowest_bit  # shift the value over to the right spot
         with obj.spi_device as spi:
-            # print(f"buffer: {', '.join(bin(b) for b in self.buffer)}")
             self._shift_rw_cmd_bit_into_address_byte(1)
-            print(f"RWBits __set__ b4 readinto buffer: {', '.join(bin(b) for b in self.buffer)}, value: {hex(value)}")
             spi.write(self.buffer, end=1)
             spi.readinto(self.buffer, start=1)
             reg = 0
@@ -90,17 +84,13 @@ class RWBits:
                 order = range(1, len(self.buffer))
             for i in order:
                 reg = (reg << 8) | self.buffer[i]
-            print("old reg: ", hex(reg))
             reg &= ~self.bit_mask  # mask off the bits we're about to change
             reg |= value  # then or in our new value
-            print("new reg: ", hex(reg))
             for i in reversed(order):
                 self.buffer[i] = reg & 0xFF
                 reg >>= 8
 
             self._shift_rw_cmd_bit_into_address_byte(0)
-            print(
-                f"RWBits __set__ before data write buffer: {', '.join(hex(b) for b in self.buffer)}, value: {hex(value)}")
             spi.write(self.buffer)
 
 

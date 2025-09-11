@@ -37,7 +37,6 @@ class RWBit:
 
 
     def __init__(self, register_address, bit, register_width=1, lsb_first=True):
-        print(f"register address: {hex(register_address)}, bit: {bit}, width: {register_width}")
         self.bit_mask = 1 << (bit % 8)  # the bitmask *within* the byte!
         self.buffer = bytearray(1 + register_width)
         self.buffer[0] = register_address
@@ -50,16 +49,13 @@ class RWBit:
     def __get__(self, obj, objtype=None):
         with obj.spi_device as spi:
             self._shift_rw_cmd_bit_into_address_byte(1)
-            print(f"RWBit __get__ buffer b4: {', '.join(bin(b) for b in self.buffer)}")
             spi.write(self.buffer, end=1)
             spi.readinto(self.buffer, start=1)
-            print(f"RWBit __get__ buffer after: {', '.join(bin(b) for b in self.buffer)}")
         return bool(self.buffer[self.byte] & self.bit_mask)
 
     def __set__(self, obj, value):
         with obj.spi_device as spi:
             self._shift_rw_cmd_bit_into_address_byte(0)
-            print(f"RWBit __set__ b4 readinto buffer: {', '.join(bin(b) for b in self.buffer)}, value: {hex(value)}")
             spi.write(self.buffer, end=1)
             spi.readinto(self.buffer, start=1)
             if value:
@@ -67,8 +63,6 @@ class RWBit:
             else:
                 self.buffer[self.byte] &= ~self.bit_mask
             self._shift_rw_cmd_bit_into_address_byte(0)
-            print(
-                f"RWBit __set__ before data write buffer: {', '.join(hex(b) for b in self.buffer)}, value: {hex(value)}")
             spi.write(self.buffer)
 
 
