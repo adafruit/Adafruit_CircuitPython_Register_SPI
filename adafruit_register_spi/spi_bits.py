@@ -11,6 +11,7 @@ Multi bit registers
 * Author(s): Scott Shawcroft
 * Adaptation by Max Holliday
 """
+
 import time
 
 
@@ -28,7 +29,6 @@ class RWBits:
     :param bool lsb_first: Is the first byte we read from SPI the LSB? Defaults to true
     """
 
-    # pylint: disable=too-many-arguments
     def __init__(
         self,
         num_bits,

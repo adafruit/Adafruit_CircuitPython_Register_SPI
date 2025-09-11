@@ -35,7 +35,6 @@ class RWBit:
         # Set the MSB to the desired bit value
         self.buffer[0] = cleared_byte | (bit_value << 7)
 
-
     def __init__(self, register_address, bit, register_width=1, lsb_first=True):
         self.bit_mask = 1 << (bit % 8)  # the bitmask *within* the byte!
         self.buffer = bytearray(1 + register_width)
