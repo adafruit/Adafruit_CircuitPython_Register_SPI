@@ -26,7 +26,18 @@ class RWBit:
 
     """
 
+    def _shift_rw_cmd_bit_into_address_byte(self, bit_value):
+        if bit_value not in {0, 1}:
+            raise ValueError("bit_value must be 0 or 1")
+
+        # Clear the MSB (set bit 7 to 0)
+        cleared_byte = self.buffer[0] & 0x7F
+        # Set the MSB to the desired bit value
+        self.buffer[0] = cleared_byte | (bit_value << 7)
+
+
     def __init__(self, register_address, bit, register_width=1, lsb_first=True):
+        print(f"register address: {hex(register_address)}, bit: {bit}, width: {register_width}")
         self.bit_mask = 1 << (bit % 8)  # the bitmask *within* the byte!
         self.buffer = bytearray(1 + register_width)
         self.buffer[0] = register_address
@@ -38,18 +49,26 @@ class RWBit:
 
     def __get__(self, obj, objtype=None):
         with obj.spi_device as spi:
-            spi.write(self.buffer, end=2)
+            self._shift_rw_cmd_bit_into_address_byte(1)
+            print(f"RWBit __get__ buffer b4: {', '.join(bin(b) for b in self.buffer)}")
+            spi.write(self.buffer, end=1)
             spi.readinto(self.buffer, start=1)
+            print(f"RWBit __get__ buffer after: {', '.join(bin(b) for b in self.buffer)}")
         return bool(self.buffer[self.byte] & self.bit_mask)
 
     def __set__(self, obj, value):
         with obj.spi_device as spi:
-            spi.write(self.buffer, end=2)
+            self._shift_rw_cmd_bit_into_address_byte(0)
+            print(f"RWBit __set__ b4 readinto buffer: {', '.join(bin(b) for b in self.buffer)}, value: {hex(value)}")
+            spi.write(self.buffer, end=1)
             spi.readinto(self.buffer, start=1)
             if value:
                 self.buffer[self.byte] |= self.bit_mask
             else:
                 self.buffer[self.byte] &= ~self.bit_mask
+            self._shift_rw_cmd_bit_into_address_byte(0)
+            print(
+                f"RWBit __set__ before data write buffer: {', '.join(hex(b) for b in self.buffer)}, value: {hex(value)}")
             spi.write(self.buffer)
 
 
